@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>儿童学习卡片轮播</title>
@@ -8,9 +8,12 @@
             font-family: "Comic Sans MS", "Microsoft YaHei", sans-serif;
             background-color: #ffeef5;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
         }
         .carousel {
             width: 400px;
@@ -19,6 +22,7 @@
             overflow: hidden;
             box-shadow: 0 6px 15px rgba(0,0,0,0.15);
             border: 4px dashed #ff99cc;
+            position: relative;
         }
         .cards {
             display: flex;
@@ -29,37 +33,44 @@
             background-color: #fff8f0;
             border-radius: 30px 30px 0 0;
             overflow: hidden;
+            box-sizing: border-box;
         }
         .card img {
             width: 100%;
             height: 250px;
             object-fit: cover;
             border-bottom: 4px solid #ffccdd;
+            display: block;
         }
         .card-content {
             padding: 20px;
             text-align: center;
+            min-height: 140px;
         }
         .ch-word {
             font-size: 32px;
             color: #ff6699;
             font-weight: bold;
             text-shadow: 1px 1px #fff0f5;
+            margin-bottom: 5px;
         }
         .ch-desc {
             font-size: 20px;
             color: #666;
             margin: 8px 0 15px 0;
+            min-height: 1.2em;
         }
         .en-word {
             font-size: 26px;
             color: #3399ff;
             font-weight: bold;
             text-shadow: 1px 1px #e6f3ff;
+            margin-bottom: 5px;
         }
         .en-desc {
             font-size: 18px;
             color: #555;
+            min-height: 1.2em;
         }
         .controls {
             display: flex;
@@ -84,50 +95,172 @@
         .arrow:hover {
             background-color: #ff8aa5;
         }
+        .arrow:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #ff6699;
+            font-weight: bold;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        .gen-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .gen-input {
+            padding: 10px 16px;
+            border: 2px solid #ff99cc;
+            border-radius: 20px;
+            font-size: 16px;
+            min-width: 200px;
+        }
+        .gen-size-wrap { display: flex; align-items: center; gap: 6px; color: #666; }
+        .gen-size { width: 50px; padding: 8px; border-radius: 12px; border: 2px solid #ffcc99; text-align: center; }
     </style>
 </head>
 <body>
 
+<!-- 生成入口：输入词汇并请求后端 -->
+<div class="gen-bar" id="genBar">
+    <input type="text" id="msgInput" placeholder="输入词汇，如：苹果、香蕉" class="gen-input">
+    <span class="gen-size-wrap">
+        <label>数量</label>
+        <input type="number" id="sizeInput" min="1" max="5" value="1" class="gen-size">
+    </span>
+    <button type="button" class="arrow" id="genBtn" onclick="requestGen()">生成卡片</button>
+</div>
 <div class="carousel">
     <div class="cards" id="cardContainer">
-        <div class="card" th:each="item, index : ${cards}">
-            <img th:src="${item.img}" alt="向日葵">
-            <div class="card-content">
-                <div class="ch-word" th:text="${item.info.zh}">向日葵</div>
-                <div class="ch-desc" th:text="${item.info.zhDesc}">一种总是面向太阳的花朵</div>
-                <div class="en-word" th:text="${item.info.en}">Sunflower</div>
-                <div class="en-desc" th:text="${item.info.enDesc}">A flower that always faces the sun</div>
+        <!-- Thymeleaf 服务端渲染卡片 -->
+        <th:block th:if="${#lists.isEmpty(cards)}">
+            <div class="card" style="min-width: 400px;">
+                <div class="card-content empty-state">
+                    暂无卡片数据，请输入上方词汇并点击「生成卡片」<br/>
+                    或直接访问：/card?msg=词汇&size=1
+                </div>
             </div>
-        </div>
+        </th:block>
+        <th:block th:each="card : ${cards}">
+            <div class="card">
+                <img th:src="${card.img != null ? card.img : 'https://via.placeholder.com/400x250?text=No+Image'}"
+                     th:alt="${card.info != null and card.info.zh != null ? card.info.zh : '图片'}">
+                <div class="card-content">
+                    <div class="ch-word" th:text="${card.info != null and card.info.zh != null ? card.info.zh : '未知词汇'}"></div>
+                    <div class="ch-desc" th:text="${card.info != null and card.info.zhDesc != null ? card.info.zhDesc : ''}"></div>
+                    <div class="en-word" th:text="${card.info != null and card.info.en != null ? card.info.en : 'Unknown'}"></div>
+                    <div class="en-desc" th:text="${card.info != null and card.info.enDesc != null ? card.info.enDesc : ''}"></div>
+                </div>
+            </div>
+        </th:block>
     </div>
     <div class="controls">
-        <button class="arrow" onclick="prevCard()">&#9664; 上一个</button>
-        <button class="arrow" onclick="nextCard()">下一个 &#9654;</button>
+        <button class="arrow" id="prevBtn" onclick="prevCard()" disabled>&#9664; 上一个</button>
+        <button class="arrow" id="nextBtn" onclick="nextCard()" th:disabled="${#lists.isEmpty(cards)}">下一个 &#9654;</button>
     </div>
 </div>
 
 <script>
+    // 从 Thymeleaf 模型中获取数据，转换为 JS 可用的数组
+    let cardsData = [];
+    /*<![CDATA[*/
+    const rawCards = /*[[${cards}]]*/ [];
+    if (rawCards && Array.isArray(rawCards)) {
+        cardsData = rawCards.map(item => ({
+            imgUrl: item.img || '',
+            zhWord: (item.info && item.info.zh) ? item.info.zh : '未知词汇',
+            zhDesc: (item.info && item.info.zhDesc) ? item.info.zhDesc : '',
+            enWord: (item.info && item.info.en) ? item.info.en : 'Unknown',
+            enDesc: (item.info && item.info.enDesc) ? item.info.enDesc : ''
+        }));
+    }
+    /*]]*/
+
+    // 始终以 DOM 中实际卡片数量为准，避免 Thymeleaf 序列化结果长度不对（如 size=2 却只得到 1 项）导致「下一个」被误禁用
+    (function syncCardsDataLengthFromDom() {
+        const cardEls = document.querySelectorAll('#cardContainer .card');
+        const isEmptyState = cardEls.length === 1 && cardEls[0].querySelector('.empty-state');
+        if (isEmptyState || cardEls.length === 0) return;
+        const domCount = cardEls.length;
+        if (cardsData.length !== domCount) {
+            cardsData = Array.from(cardEls).map(function(_, i) {
+                return cardsData[i] || {};
+            });
+        }
+    })();
+
     let currentIndex = 0;
     const cardContainer = document.getElementById('cardContainer');
-    const totalCards = document.querySelectorAll('.card').length;
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    // 单张卡片宽度，与 CSS .card min-width 一致
+    const CARD_WIDTH = 400;
+
+    // 初始化轮播状态
+    function initCarousel() {
+        if (cardsData.length === 0) {
+            return;
+        }
+        currentIndex = 0;
+        updateCarousel();
+        updateButtons();
+    }
 
     function updateCarousel() {
-        cardContainer.style.transform = `translateX(-${currentIndex * 400}px)`;
+        if (cardsData.length === 0) return;
+        cardContainer.style.transform = 'translateX(-' + (currentIndex * CARD_WIDTH) + 'px)';
+    }
+
+    function updateButtons() {
+        if (cardsData.length === 0) {
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            return;
+        }
+        prevBtn.disabled = currentIndex <= 0;
+        nextBtn.disabled = currentIndex >= cardsData.length - 1;
     }
 
     function prevCard() {
         if (currentIndex > 0) {
             currentIndex--;
             updateCarousel();
+            updateButtons();
         }
     }
 
     function nextCard() {
-        if (currentIndex < totalCards - 1) {
+        if (currentIndex < cardsData.length - 1) {
             currentIndex++;
             updateCarousel();
+            updateButtons();
         }
     }
+
+    // 请求后端生成卡片：跳转到 /card?msg=xxx&size=n，由服务端渲染后返回同一模板
+    function requestGen() {
+        const msg = document.getElementById('msgInput').value.trim();
+        const size = parseInt(document.getElementById('sizeInput').value, 10) || 1;
+        if (!msg) {
+            alert('请输入词汇');
+            return;
+        }
+        const url = '/card?msg=' + encodeURIComponent(msg) + '&size=' + Math.min(5, Math.max(1, size));
+        window.location.href = url;
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', initCarousel);
 </script>
 
 </body>
