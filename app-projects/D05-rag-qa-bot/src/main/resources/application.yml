@@ -5,7 +5,7 @@ spring:
       api-key: ${zhipuai-api-key}
       chat: # 聊天模型
         options:
-          model: GLM-4-Flash
+          model: GLM-4.7-Flash
           temperature: 0.1 # 低温度，保证提取的稳定性
   thymeleaf:
     cache: false
