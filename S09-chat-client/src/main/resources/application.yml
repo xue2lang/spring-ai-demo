@@ -5,7 +5,7 @@ spring:
       api-key: ${zhipuai-api-key}
       chat:
         options:
-          model: GLM-4.7-Flash
+          model: GLM-4-Flash
 
 # 修改日志级别
 logging:

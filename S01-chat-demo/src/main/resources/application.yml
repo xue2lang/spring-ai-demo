@@ -5,4 +5,12 @@ spring:
       api-key: ${zhipuai-api-key}
       chat:
         options:
-          model: GLM-4.7-Flash
+          model: GLM-4-Flash
+
+# Spring Boot 全局编码配置（YAML格式）
+server:
+  servlet:
+    encoding:
+      enabled: true # 启用HTTP编码支持
+      force: true        # 强制Servlet层使用指定编码
+      charset: UTF-8 # 核心编码格式（解决乱码的关键）

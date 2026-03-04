@@ -71,7 +71,7 @@ public class T01Application {
                     .prompt("""
                             按照最佳实际的方式，评审下面的代码实现:
 
-                             D:\\Workspace\\hui\\project\\spring-ai-demo\\v2\\T01-agentic-skills-simple-design\\src\\main\\java\\com\\git\\hui\\springai\\app\\demo\\DocumentChunker.java
+                             /Applications/soft/workspace/github/spring-ai-demo/v2/T01-agentic-skills-simple-design/src/main/java/com/git/hui/springai/app/demo/DocumentChunker.java
                              """)
                     .call()
                     .content();
